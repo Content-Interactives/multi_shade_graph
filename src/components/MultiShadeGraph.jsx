@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+// Imports
 
 const WIDTH = 500;
 const HEIGHT = 500;
