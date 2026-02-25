@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 // Imports
 
 const WIDTH = 500;
@@ -70,7 +70,7 @@ function clipLineToRect(p1, p2, minX, maxX, minY, maxY) {
 }
 
 /** Order clip endpoints so that the line goes from "near p1" to "near p2". */
-function orderEndpointsByPoints(clipEnd1, clipEnd2, p1, p2) {
+function orderEndpointsByPoints(clipEnd1, clipEnd2, p1) {
 	const d1a = (clipEnd1.x - p1.x) ** 2 + (clipEnd1.y - p1.y) ** 2;
 	const d2a = (clipEnd2.x - p1.x) ** 2 + (clipEnd2.y - p1.y) ** 2;
 	return d1a <= d2a ? [clipEnd1, clipEnd2] : [clipEnd2, clipEnd1];
@@ -174,7 +174,10 @@ const MultiShadeGraph = () => {
 	const containerRef = useRef(null);
 	const pendingLineRef = useRef(null); // segment to commit when animation hits 1
 	const historyIndexRef = useRef(0);
-	historyIndexRef.current = historyIndex;
+
+	useEffect(() => {
+		historyIndexRef.current = historyIndex;
+	}, [historyIndex]);
 
 	// Display completed lines. While animating the next line (points.length === 2), show one fewer.
 	const completedLines =
@@ -184,7 +187,10 @@ const MultiShadeGraph = () => {
 
 	const canDrawLines = historyIndex < REQUIRED_LINES;
 	const canShade = historyIndex >= REQUIRED_LINES && completedLines.length >= REQUIRED_LINES;
-	const currentShadedRegions = shadingHistory[shadingIndex] ?? [];
+	const currentShadedRegions = useMemo(
+		() => shadingHistory[shadingIndex] ?? [],
+		[shadingHistory, shadingIndex]
+	);
 
 	const clientToSvg = useCallback((clientX, clientY) => {
 		const el = containerRef.current;
@@ -314,6 +320,8 @@ const MultiShadeGraph = () => {
 		};
 		const id = requestAnimationFrame(tick);
 		return () => cancelAnimationFrame(id);
+		// Intentionally only depend on points.length so we run once when second point is set
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [points.length]);
 
 	const allPoints = [
@@ -347,10 +355,6 @@ const MultiShadeGraph = () => {
 
 	const p1 = points[0];
 	const p2 = points[1];
-	const x1 = p1 ? valueToX(p1.x) : 0;
-	const y1 = p1 ? valueToY(p1.y) : 0;
-	const x2 = p2 ? valueToX(p2.x) : 0;
-	const y2 = p2 ? valueToY(p2.y) : 0;
 
 	/** Renders a line (value-space p1, p2) extended to container edges (SVG bounds) with arrows. Returns { lineProps, arrow1, arrow2 } or null. */
 	const renderExtendedLine = (segP1, segP2) => {
